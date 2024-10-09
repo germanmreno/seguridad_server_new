@@ -9,7 +9,11 @@ const prisma = new PrismaClient();
 // Get all visitors
 router.get('/', async (req, res) => {
   try {
-    const visitors = await prisma.visitor.findMany();
+    const visitors = await prisma.visitor.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
     res.json(visitors);
   } catch (err) {
     res.status(500).json({ message: err.message });
