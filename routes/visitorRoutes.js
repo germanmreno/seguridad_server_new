@@ -20,6 +20,39 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/search-visitor', async (req, res) => {
+  const { dni } = req.query;
+
+  if (!dni) {
+    return res.status(400).json({ error: 'DNI is required' });
+  }
+
+  try {
+    const visitor = await prisma.visitor.findUnique({
+      where: { dni: dni },
+      select: {
+        firstName: true,
+        lastName: true,
+        dni: true,
+        business: true,
+        phonePrefix: true,
+        phoneNumber: true,
+      },
+    });
+
+    if (visitor) {
+      res.json({ visitor });
+    } else {
+      res.json({ visitor: null });
+    }
+  } catch (error) {
+    console.error('Error searching for visitor:', error);
+    res
+      .status(500)
+      .json({ error: 'An error occurred while searching for the visitor' });
+  }
+});
+
 // Add a new visitor
 router.post('/', async (req, res) => {
   try {
