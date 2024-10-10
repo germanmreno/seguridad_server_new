@@ -20,7 +20,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/search-visitor', async (req, res) => {
+// Search visitor by DNI
+router.get('/api/search-visitor', async (req, res) => {
   const { dni } = req.query;
 
   if (!dni) {
@@ -28,20 +29,24 @@ router.get('/search-visitor', async (req, res) => {
   }
 
   try {
-    const visitor = await prisma.visitor.findUnique({
+    const visitors = await prisma.visitor.findMany({
       where: { dni: dni },
+      orderBy: { createdAt: 'desc' },
       select: {
         firstName: true,
         lastName: true,
         dni: true,
         business: true,
-        phonePrefix: true,
-        phoneNumber: true,
+        phone: true,
+        gerency: true,
+        contact: true,
+        createdAt: true,
       },
+      take: 1, // Get only the most recent visit
     });
 
-    if (visitor) {
-      res.json({ visitor });
+    if (visitors.length > 0) {
+      res.json({ visitor: visitors[0] });
     } else {
       res.json({ visitor: null });
     }
