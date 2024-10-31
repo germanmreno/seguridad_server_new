@@ -24,7 +24,7 @@ async function main() {
       },
     });
 
-    console.log('Creating administrative units...');
+    console.log('Creating MIDME administrative units...');
     await prisma.administrativeUnit.createMany({
       data: [
         {
@@ -722,52 +722,459 @@ async function main() {
       }
     }
 
-    console.log('Seed completed successfully!');
+    console.log('Areas created successfully!');
+    console.log('MIDME SEED COMPLETED SUCCESSFULLY!');
 
-    // Create administrative units
+    console.log('Creating CVM administrative units...');
+    await prisma.administrativeUnit.createMany({
+      data: [
+        {
+          id: 100n,
+          name: 'Presidencia',
+          entity_id: cvm.id,
+        },
+        {
+          id: 101n,
+          name: 'Vicepresidencia',
+          entity_id: cvm.id,
+        },
+        {
+          id: 102n,
+          name: 'Oficina de Auditoría Interna',
+          entity_id: cvm.id,
+        },
+        {
+          id: 103n,
+          name: 'Oficina de Tecnología de Consultoría Jurídica',
+          entity_id: cvm.id,
+        },
+        {
+          id: 104n,
+          name: 'Oficina de Planificación, Presupuesto y Organización',
+          entity_id: cvm.id,
+        },
+        {
+          id: 105n,
+          name: 'Oficina de Gestión Humana',
+          entity_id: cvm.id,
+        },
+        {
+          id: 106n,
+          name: 'Gerencia General de Proyectos de Desarrollo Minero',
+          entity_id: cvm.id,
+        },
+        {
+          id: 107n,
+          name: 'Oficina de Seguridad Integral',
+          entity_id: cvm.id,
+        },
+        {
+          id: 108n,
+          name: 'Oficina de Atención al Ciudadano',
+          entity_id: cvm.id,
+        },
+        {
+          id: 109n,
+          name: 'Oficina de Administración y Finanzas',
+          entity_id: cvm.id,
+        },
+        {
+          id: 110n,
+          name: 'Oficina de Seguimiento y Control',
+          entity_id: cvm.id,
+        },
+        {
+          id: 111n,
+          name: 'Oficina de Gestión Comunicacional',
+          entity_id: cvm.id,
+        },
+        {
+          id: 112n,
+          name: 'Oficina de Tecnología de la Información',
+          entity_id: cvm.id,
+        },
+        {
+          id: 113n,
+          name: 'Gerencia General de Sistematización del Catastro Minero',
+          entity_id: cvm.id,
+        },
+        {
+          id: 114n,
+          name: 'Gerencia General de Gestión Ecosocialista',
+          entity_id: cvm.id,
+        },
+        {
+          id: 115n,
+          name: 'Gerencia General de Producción e Industrialización Minera',
+          entity_id: cvm.id,
+        },
+        {
+          id: 116n,
+          name: 'Gerencia General de Comercialización',
+          entity_id: cvm.id,
+        },
+      ],
+    });
 
-    // const cvm_administrative_units = await prisma.administrativeUnit.create({
-    //   data: [
-    //     {
-    //       name: 'Oficina de Tecnología de la Información',
-    //       entity_id: cvm.id,
-    //     },
-    //     {
-    //       name: 'Consultoría Jurídica',
-    //       entity_id: cvm.id,
-    //     },
-    //     {
-    //       name: 'Oficina de Planificación, Presupuesto y Organización',
-    //       entity_id: cvm.id,
-    //     },
-    //     {
-    //       name: 'Oficina de Gestión Humana',
-    //       entity_id: cvm.id,
-    //     },
-    //     {
-    //       name: 'Oficina de Seguridad Integral',
-    //     },
-    //   ],
-    // });
+    console.log('CVM administrative units created successfully!');
 
-    // console.log({ cvm_administrative_units });
+    console.log('Creating CVM directions...');
 
-    // const cvm_it_directions = await prisma.direction.createMany({
-    //   data: [
-    //     {
-    //       name: 'Coordinación de Infraestructura Tecnológica',
-    //       administrative_unit_id: cvm_administrative_units.id,
-    //     },
-    //     {
-    //       name: 'Coordinación de Desarrollo de Sistemas',
-    //       administrative_unit_id: cvm_administrative_units.id,
-    //     },
-    //     {
-    //       name: 'Coordinación de Desarrollo de Soporte Tecnológico',
-    //       administrative_unit_id: cvm_administrative_units.id,
-    //     },
-    //   ],
-    // });
+    const cvmDirections = [
+      {
+        id: 106010n,
+        name: 'Gerencia de Sistematización de Información Geográfica',
+        administrative_unit_id: 106n,
+      },
+      {
+        id: 106020n,
+        name: 'Gerencia de Evaluación de Proyectos',
+        administrative_unit_id: 106n,
+      },
+      {
+        id: 114010n,
+        name: 'Gerencia de Formación Ambiental',
+        administrative_unit_id: 114n,
+      },
+      {
+        id: 114020n,
+        name: 'Gerencia de Desarrollo Sustentable',
+        administrative_unit_id: 114n,
+      },
+      {
+        id: 115010n,
+        name: 'Gerencia de Pequeña Minería',
+        administrative_unit_id: 115n,
+      },
+      {
+        id: 115020n,
+        name: 'Gerencia de Planta',
+        administrative_unit_id: 115n,
+      },
+      {
+        id: 115030n,
+        name: 'Gerencia de Producción y Articulación de Regiones Mineras',
+        administrative_unit_id: 115n,
+      },
+      {
+        id: 115040n,
+        name: 'Gerencia de Aseguramiento de la Calidad y Desarrollo Tecnológico',
+        administrative_unit_id: 115n,
+      },
+      {
+        id: 116010n,
+        name: 'Gerencia de Análisis y Prospectiva del Mercado de Minerales',
+        administrative_unit_id: 116n,
+      },
+      {
+        id: 116020n,
+        name: 'Gerencia de Insumos y Aseguramiento de Recursos Mineros',
+        administrative_unit_id: 116n,
+      },
+      {
+        id: 116030n,
+        name: 'Gerencia de Comercialización de Minerales Metálicos y No Metálicos',
+        administrative_unit_id: 116n,
+      },
+    ];
+
+    for (const direction of cvmDirections) {
+      await prisma.direction.create({ data: direction });
+    }
+
+    console.log('CVM directions created successfully!');
+
+    console.log('Creating CVM areas...');
+
+    const cvmAreas = [
+      {
+        id: 1020100n,
+        name: 'Coordinación de Control Posterior',
+        administrative_unit_id: 102n,
+      },
+      {
+        id: 1020200n,
+        name: 'Coordinación de Determinación de Responsabilidades',
+        administrative_unit_id: 102n,
+      },
+      {
+        id: 1030100n,
+        name: 'Coordinación de Asesoría y Documentación Legal',
+        administrative_unit_id: 103n,
+      },
+      {
+        id: 1030200n,
+        name: 'Coordinación de Procedimientos Jurídicos',
+        administrative_unit_id: 103n,
+      },
+      {
+        id: 1040100n,
+        name: 'Coordinación de Planificación Estratégica',
+        administrative_unit_id: 104n,
+      },
+      {
+        id: 1040200n,
+        name: 'Coordinación de Presupuesto y Control',
+        administrative_unit_id: 104n,
+      },
+      {
+        id: 1040300n,
+        name: 'Coordinación de Organización y Métodos',
+        administrative_unit_id: 104n,
+      },
+      {
+        id: 1050100n,
+        name: 'Coordinación de Desarrollo de Talento Humano',
+        administrative_unit_id: 105n,
+      },
+      {
+        id: 1050200n,
+        name: 'Coordinación de Bienestar Social',
+        administrative_unit_id: 105n,
+      },
+      {
+        id: 1050300n,
+        name: 'Coordinación de Administración de Talento Humano',
+        administrative_unit_id: 105n,
+      },
+      {
+        id: 1050400n,
+        name: 'Coordinación de Asuntos Laborales',
+        administrative_unit_id: 105n,
+      },
+      {
+        id: 1070100n,
+        name: 'Coordinación de Seguridad de la Información',
+        administrative_unit_id: 107n,
+      },
+      {
+        id: 1070200n,
+        name: 'Coordinación de Resguardo de Instalaciones, Bienes y Personas',
+        administrative_unit_id: 107n,
+      },
+      {
+        id: 1070300n,
+        name: 'Coordinación de Seguridad Industrial e Higiene Ocupacional',
+        administrative_unit_id: 107n,
+      },
+      {
+        id: 1080100n,
+        name: 'Coordinación de Información y Promoción de la Participación Ciudadana',
+        administrative_unit_id: 108n,
+      },
+      {
+        id: 1080200n,
+        name: 'Coordinación de Atención Individual y Colectiva',
+        administrative_unit_id: 108n,
+      },
+      {
+        id: 1090100n,
+        name: 'Coordinación de Bienes Públicos',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1090200n,
+        name: 'Coordinación de Servicios Generales y Logística',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1090300n,
+        name: 'Coordinación de Procura',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1090400n,
+        name: 'Coordinación de Compras',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1090500n,
+        name: 'Coordinación de Tesorería',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1090600n,
+        name: 'Taquilla de Pago',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1090700n,
+        name: 'Coordinación de Contabilidad',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1090800n,
+        name: 'Coordinación de Transporte',
+        administrative_unit_id: 109n,
+      },
+      {
+        id: 1100100n,
+        name: 'Coordinación de Análisis del Entorno',
+        administrative_unit_id: 110n,
+      },
+      {
+        id: 1100200n,
+        name: 'Coordinación de Seguimiento de las Actividades Mineras y Conexas',
+        administrative_unit_id: 110n,
+      },
+      {
+        id: 1100300n,
+        name: 'Coordinación de Estadísticas Ecomineras',
+        administrative_unit_id: 110n,
+      },
+      {
+        id: 1100400n,
+        name: 'Taquilla de Atención al Usuario Minero',
+        administrative_unit_id: 110n,
+      },
+      {
+        id: 1110100n,
+        name: 'Coordinación de Prensa',
+        administrative_unit_id: 111n,
+      },
+      {
+        id: 1110200n,
+        name: 'Coordinación de Audiovisuales',
+        administrative_unit_id: 111n,
+      },
+      {
+        id: 1110300n,
+        name: 'Coordinación de Eventos y Protocolo',
+        administrative_unit_id: 111n,
+      },
+      {
+        id: 1120100n,
+        name: 'Coordinación de Infraestructura Tecnológica',
+        administrative_unit_id: 112n,
+      },
+      {
+        id: 1120200n,
+        name: 'Coordinación de Desarrollo de Sistemas',
+        administrative_unit_id: 112n,
+      },
+      {
+        id: 1120300n,
+        name: 'Coordinación de Soporte Tecnológico',
+        administrative_unit_id: 112n,
+      },
+      {
+        id: 106010100n,
+        name: 'Coordinación de Cartografía',
+        direction_id: 106010n,
+      },
+      {
+        id: 106010200n,
+        name: 'Coordinación de Catastro Minero',
+        direction_id: 106010n,
+      },
+      {
+        id: 106020100n,
+        name: 'Coordinación de Análisis de Factibilidad',
+        direction_id: 106020n,
+      },
+      {
+        id: 106020200n,
+        name: 'Coordinación de Portafolio de Proyectos',
+        direction_id: 106020n,
+      },
+      {
+        id: 115010100n,
+        name: 'Coordinación de Seguimiento y Control Productivo de Pequeña Minería',
+        direction_id: 115010n,
+      },
+      {
+        id: 115010200n,
+        name: 'Coordinación de Servicio de Voladura',
+        direction_id: 115010n,
+      },
+      {
+        id: 115020100n,
+        name: 'Coordinación de Funcionarios de Planta',
+        direction_id: 115020n,
+      },
+      {
+        id: 115020200n,
+        name: 'Coordinación de Seguimiento y Control Productivo de Mediana y Gran Minería',
+        direction_id: 115020n,
+      },
+      {
+        id: 115040100n,
+        name: 'Coordinación de Planes y Proyectos de Exploración e Innovación Minera',
+        direction_id: 115040n,
+      },
+      {
+        id: 115040200n,
+        name: 'Coordinación de Control de Calidad',
+        direction_id: 115040n,
+      },
+      {
+        id: 116010100n,
+        name: 'Coordinación de Insumos El Callao',
+        direction_id: 116010n,
+      },
+      {
+        id: 116010200n,
+        name: 'Coordinación de Insumos Puerto Ordaz',
+        direction_id: 116010n,
+      },
+      {
+        id: 116010300n,
+        name: 'Coordinación de Insumos Táchira',
+        direction_id: 116010n,
+      },
+      {
+        id: 116010400n,
+        name: 'Coordinación de Insumos Zulia',
+        direction_id: 116010n,
+      },
+    ];
+
+    for (const area of cvmAreas) {
+      try {
+        // Check if the area has a direction_id
+        if (area.direction_id) {
+          const direction = await prisma.direction.findUnique({
+            where: { id: area.direction_id },
+          });
+
+          if (!direction) {
+            console.warn(
+              `Warning: Direction ${area.direction_id} not found for CVM area ${area.name}`
+            );
+            continue;
+          }
+        }
+
+        // Check if the area has an administrative_unit_id
+        if (area.administrative_unit_id) {
+          const adminUnit = await prisma.administrativeUnit.findUnique({
+            where: { id: area.administrative_unit_id },
+          });
+
+          if (!adminUnit) {
+            console.warn(
+              `Warning: Administrative Unit ${area.administrative_unit_id} not found for CVM area ${area.name}`
+            );
+            continue;
+          }
+        }
+
+        // Create the area with the appropriate fields
+        await prisma.area.create({
+          data: {
+            id: area.id,
+            name: area.name,
+            direction_id: area.direction_id || null,
+            administrative_unit_id: area.administrative_unit_id || null,
+          },
+        });
+        console.log(`Created CVM area: ${area.name}`);
+      } catch (error) {
+        console.error(`Error creating CVM area ${area.name}:`, error);
+      }
+    }
+
+    console.log('CVM areas created successfully!');
   } catch (error) {
     console.error('Error seeding database:', error);
     throw error;
