@@ -8,6 +8,9 @@ const prisma = new PrismaClient();
 
 // Validation middleware
 const validateRegistration = (req, res, next) => {
+  console.log('Validating registration');
+  console.log(req.body);
+
   const requiredFields = [
     'dni_type_id',
     'dni_number',
