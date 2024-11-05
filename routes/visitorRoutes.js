@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { verifyToken } from './authRoutes.js';
+import { serializeBigInt } from '../utils/serializer.js';
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ const validateRegistration = (req, res, next) => {
   console.log('Validating registration');
   console.log(req.body);
 
+  // Base required fields (always required)
   const requiredFields = [
     'dni_type_id',
     'dni_number',
@@ -19,14 +21,11 @@ const validateRegistration = (req, res, next) => {
     'contact_number_prefix_id',
     'contact_number',
     'enterpriseName',
+    'enterpriseRif',
     'visit_type_id',
     'entity_id',
     'administrative_unit_id',
-    'area_id',
-    'direction_id',
     'visit_date',
-    'exit_date',
-    'entry_type',
     'visit_reason',
   ];
 
@@ -41,30 +40,110 @@ const validateRegistration = (req, res, next) => {
     });
   }
 
-  // Validate vehicle data consistency
-  if (req.body.vehicle_plate || req.body.vehicle_model) {
+  // Validate vehicle data only if visit_type_id is 2 (vehicular)
+  if (req.body.visit_type_id === 2) {
     if (!req.body.vehicle_plate || !req.body.vehicle_model) {
       return res.status(400).json({
         error: 'Incomplete vehicle information',
-        message: 'Both plate and model are required when registering a vehicle',
+        message: 'Both plate and model are required for vehicular visits',
       });
     }
+  } else if (req.body.visit_type_id === 1) {
+    // For pedestrian visits, clear any vehicle data if accidentally sent
+    delete req.body.vehicle_plate;
+    delete req.body.vehicle_model;
+    delete req.body.vehicle_brand;
+    delete req.body.vehicle_color;
   }
 
   next();
 };
 
-// Get all visitors
+// Get all visitors with their latest visits and related information
 router.get('/', async (req, res) => {
   try {
-    const visitors = await prisma.visitor.findMany({
+    const visits = await prisma.visit.findMany({
       orderBy: {
         createdAt: 'desc',
       },
+      include: {
+        visitor: {
+          include: {
+            dnis_type: true,
+            numbers_prefix: true,
+            visitor_companies: {
+              include: {
+                company: true,
+              },
+            },
+          },
+        },
+        visit_type: true,
+        entity: true,
+        administrative_unit: true,
+        area: true,
+        direction: true,
+        vehicle: {
+          select: {
+            id: true,
+            brand: true,
+            model: true,
+            color: true,
+            plate: true,
+          },
+        },
+      },
     });
-    res.json(visitors);
+
+    // Format the response to be more frontend-friendly
+    const formattedVisits = visits.map((visit) => ({
+      id: visit.id,
+      visitDate: visit.visit_date,
+      exitDate: visit.exit_date,
+      visitReason: visit.visit_reason,
+      createdAt: visit.createdAt,
+      updatedAt: visit.updatedAt,
+
+      // Visitor information
+      visitor: {
+        id: visit.visitor.id,
+        fullName: `${visit.visitor.first_name} ${visit.visitor.last_name}`,
+        dniType: visit.visitor.dnis_type.abbreviation,
+        dniNumber: visit.visitor.dni_number,
+        contactNumber: `${visit.visitor.numbers_prefix.code}${visit.visitor.contact_number}`,
+        company: visit.visitor.visitor_companies[0]?.company || null,
+      },
+
+      // Visit type
+      visitType: visit.visit_type.name,
+
+      // Location information
+      location: {
+        entity: visit.entity.name,
+        administrativeUnit: visit.administrative_unit.name,
+        direction: visit.direction?.name || null,
+        area: visit.area?.name || null,
+      },
+
+      // Vehicle information (if exists)
+      vehicle: visit.vehicle
+        ? {
+            id: visit.vehicle.id,
+            plate: visit.vehicle.plate,
+            brand: visit.vehicle.brand,
+            model: visit.vehicle.model,
+            color: visit.vehicle.color,
+          }
+        : null,
+    }));
+
+    res.json(serializeBigInt(formattedVisits));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Error fetching visits:', err);
+    res.status(500).json({
+      message: 'Error fetching visits',
+      error: err.message,
+    });
   }
 });
 
@@ -273,6 +352,7 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
 
         // Enterprise data
         enterpriseName,
+        enterpriseRif,
 
         // Visit data
         visit_type_id,
@@ -282,7 +362,6 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
         direction_id,
         visit_date,
         exit_date,
-        entry_type,
         visit_reason,
 
         // Vehicle data (optional)
@@ -313,14 +392,17 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
           },
         }));
 
-      // 3. Create or find enterprise
-      let company = await prisma.company.findFirst({
-        where: { name: enterpriseName },
+      // 3. Create or find enterprise by RIF (more reliable than name)
+      let company = await prisma.company.findUnique({
+        where: { rif: enterpriseRif },
       });
 
       if (!company) {
         company = await prisma.company.create({
-          data: { name: enterpriseName },
+          data: {
+            name: enterpriseName,
+            rif: enterpriseRif,
+          },
         });
       }
 
@@ -341,9 +423,9 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
         });
       }
 
-      // 5. Create vehicle if data is provided
+      // 5. Create vehicle only if it's a vehicular visit
       let vehicle = null;
-      if (vehicle_plate && vehicle_model) {
+      if (visit_type_id === 2 && vehicle_plate && vehicle_model) {
         vehicle = await prisma.vehicle.create({
           data: {
             plate: vehicle_plate,
@@ -361,13 +443,11 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
           visit_type_id,
           entity_id,
           administrative_unit_id: BigInt(administrative_unit_id),
-          area_id: BigInt(area_id),
-          direction_id: BigInt(direction_id),
+          area_id: area_id ? BigInt(area_id) : null,
+          direction_id: direction_id ? BigInt(direction_id) : null,
           visit_date: new Date(visit_date),
-          exit_date: new Date(exit_date),
-          entry_type,
           visit_reason,
-          ...(vehicle && { vehicle_id: vehicle.id }), // Only add vehicle_id if vehicle exists
+          ...(vehicle?.id ? { vehicle_id: vehicle.id } : {}),
         },
       });
 
@@ -379,11 +459,52 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
       };
     });
 
-    res.status(201).json(transaction);
+    res.status(201).json(serializeBigInt(transaction));
   } catch (error) {
     console.error('Registration error:', error);
     res.status(400).json({
       error: 'Error during registration',
+      details: error.message,
+    });
+  }
+});
+
+// Update visit exit date
+router.patch('/exit/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updatedVisit = await prisma.visit.update({
+      where: { id: parseInt(id) },
+      data: {
+        exit_date: new Date(),
+      },
+      include: {
+        visitor: {
+          include: {
+            dnis_type: true,
+            numbers_prefix: true,
+            visitor_companies: {
+              include: {
+                company: true,
+              },
+            },
+          },
+        },
+        visit_type: true,
+        entity: true,
+        administrative_unit: true,
+        area: true,
+        direction: true,
+        vehicle: true,
+      },
+    });
+
+    res.json(serializeBigInt(updatedVisit));
+  } catch (error) {
+    console.error('Error updating visit exit:', error);
+    res.status(500).json({
+      error: 'Error updating visit exit',
       details: error.message,
     });
   }

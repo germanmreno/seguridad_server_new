@@ -8,6 +8,44 @@ async function main() {
     await prisma.direction.deleteMany();
     await prisma.administrativeUnit.deleteMany();
     await prisma.entity.deleteMany();
+    await prisma.visitType.deleteMany();
+    await prisma.dnisType.deleteMany();
+    await prisma.numbersPrefix.deleteMany();
+    await prisma.parkingRecord.deleteMany();
+    await prisma.garageSpace.deleteMany();
+
+    // Create visit types
+    console.log('Creating visit types...');
+    await prisma.visitType.createMany({
+      data: [{ name: 'Pedestrian' }, { name: 'Vehicular' }],
+    });
+
+    // Create DNI types
+    console.log('Creating DNI types...');
+    await prisma.dnisType.createMany({
+      data: [
+        {
+          name: 'Venezolano',
+          abbreviation: 'V',
+        },
+        {
+          name: 'Extranjero',
+          abbreviation: 'E',
+        },
+      ],
+    });
+
+    // Create number prefixes
+    console.log('Creating phone number prefixes...');
+    await prisma.numbersPrefix.createMany({
+      data: [
+        { code: '+58(412)' },
+        { code: '+58(414)' },
+        { code: '+58(416)' },
+        { code: '+58(424)' },
+        { code: '+58(426)' },
+      ],
+    });
 
     // Create entities one by one to ensure proper ID assignment
 
@@ -226,7 +264,7 @@ async function main() {
       },
       {
         id: 860202000000n,
-        name: 'Dirección General de la Gestión Productiva de la Mediana y Gran Minería',
+        name: 'Direcci��n General de la Gestión Productiva de la Mediana y Gran Minería',
         administrative_unit_id: 860200000000n,
       },
       {
@@ -1175,6 +1213,22 @@ async function main() {
     }
 
     console.log('CVM areas created successfully!');
+
+    // Create garage spaces
+    console.log('Creating garage spaces...');
+    const garageSpaces = [];
+    for (let i = 1; i <= 20; i++) {
+      garageSpaces.push({
+        space_identifier: `P${i.toString().padStart(2, '0')}`,
+        is_occupied: false,
+      });
+    }
+
+    await prisma.garageSpace.createMany({
+      data: garageSpaces,
+    });
+
+    console.log('Garage spaces created successfully!');
   } catch (error) {
     console.error('Error seeding database:', error);
     throw error;

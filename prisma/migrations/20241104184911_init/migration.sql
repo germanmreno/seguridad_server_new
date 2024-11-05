@@ -134,6 +134,49 @@ CREATE TABLE `Area` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `Vehicle` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `brand` VARCHAR(191) NOT NULL,
+    `model` VARCHAR(191) NOT NULL,
+    `color` VARCHAR(191) NOT NULL,
+    `license_plate` VARCHAR(191) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `GarageSpace` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `space_identifier` VARCHAR(191) NOT NULL,
+    `is_occupied` BOOLEAN NOT NULL DEFAULT false,
+
+    UNIQUE INDEX `GarageSpace_space_identifier_key`(`space_identifier`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ParkingRecord` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `vehicle_id` INTEGER NOT NULL,
+    `garage_space_id` INTEGER NOT NULL,
+    `entry_time` DATETIME(3) NOT NULL,
+    `exit_time` DATETIME(3) NULL,
+
+    INDEX `ParkingRecord_garage_space_id_idx`(`garage_space_id`),
+    INDEX `ParkingRecord_vehicle_id_idx`(`vehicle_id`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `VisitorVehicle` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `visitor_id` INTEGER NOT NULL,
+    `vehicle_id` INTEGER NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `Visitor` ADD CONSTRAINT `Visitor_dni_type_id_fkey` FOREIGN KEY (`dni_type_id`) REFERENCES `DnisType`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -178,3 +221,15 @@ ALTER TABLE `Area` ADD CONSTRAINT `Area_direction_id_fkey` FOREIGN KEY (`directi
 
 -- AddForeignKey
 ALTER TABLE `Area` ADD CONSTRAINT `Area_administrative_unit_id_fkey` FOREIGN KEY (`administrative_unit_id`) REFERENCES `AdministrativeUnit`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ParkingRecord` ADD CONSTRAINT `ParkingRecord_vehicle_id_fkey` FOREIGN KEY (`vehicle_id`) REFERENCES `Vehicle`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ParkingRecord` ADD CONSTRAINT `ParkingRecord_garage_space_id_fkey` FOREIGN KEY (`garage_space_id`) REFERENCES `GarageSpace`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `VisitorVehicle` ADD CONSTRAINT `VisitorVehicle_visitor_id_fkey` FOREIGN KEY (`visitor_id`) REFERENCES `Visitor`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `VisitorVehicle` ADD CONSTRAINT `VisitorVehicle_vehicle_id_fkey` FOREIGN KEY (`vehicle_id`) REFERENCES `Vehicle`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
