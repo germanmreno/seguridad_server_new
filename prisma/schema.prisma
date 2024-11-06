@@ -45,6 +45,7 @@ model Visit {
   area_id                BigInt?
   direction_id           BigInt?
   visit_date             DateTime
+  visit_hour             String    // New field for storing the hour
   exit_date              DateTime?
   visit_reason           String
   vehicle_id             Int?

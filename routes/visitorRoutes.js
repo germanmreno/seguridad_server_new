@@ -26,6 +26,7 @@ const validateRegistration = (req, res, next) => {
     'entity_id',
     'administrative_unit_id',
     'visit_date',
+    'visit_hour',
     'visit_reason',
   ];
 
@@ -99,6 +100,7 @@ router.get('/', async (req, res) => {
     const formattedVisits = visits.map((visit) => ({
       id: visit.id,
       visitDate: visit.visit_date,
+      visitHour: visit.visit_hour,
       exitDate: visit.exit_date,
       visitReason: visit.visit_reason,
       createdAt: visit.createdAt,
@@ -160,38 +162,96 @@ router.get('/search-visitor', async (req, res) => {
       where: {
         dni_number: parseInt(dni),
       },
-      select: {
-        id: true,
-        first_name: true,
-        last_name: true,
-        dni_number: true,
-        contact_number: true,
+      include: {
+        dnis_type: true,
+        numbers_prefix: true,
         visitor_companies: {
           include: {
             company: true,
+          },
+        },
+        visits: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 5, // Get last 5 visits
+          include: {
+            visit_type: true,
+            entity: true,
+            administrative_unit: true,
+            area: true,
+            direction: true,
+            vehicle: true,
           },
         },
       },
     });
 
     if (visitor) {
-      // Format the response to match frontend expectations
-      const formattedVisitor = {
-        firstName: visitor.first_name,
-        lastName: visitor.last_name,
-        dni: visitor.dni_number.toString(),
-        phoneNumber: visitor.contact_number,
-        enterpriseName: visitor.visitor_companies[0]?.company.name || '',
+      // Format the response with complete information
+      const formattedResponse = {
+        exists: true,
+        visitor: {
+          id: visitor.id,
+          firstName: visitor.first_name,
+          lastName: visitor.last_name,
+          fullName: `${visitor.first_name} ${visitor.last_name}`,
+          dniType: {
+            id: visitor.dnis_type.id,
+            name: visitor.dnis_type.name,
+            abbreviation: visitor.dnis_type.abbreviation,
+          },
+          dniNumber: visitor.dni_number,
+          contactInfo: {
+            prefix: visitor.numbers_prefix.code,
+            number: visitor.contact_number,
+            fullNumber: `${visitor.numbers_prefix.code}${visitor.contact_number}`,
+          },
+          company: visitor.visitor_companies[0]?.company
+            ? {
+                id: visitor.visitor_companies[0].company.id,
+                name: visitor.visitor_companies[0].company.name,
+                rif: visitor.visitor_companies[0].company.rif,
+              }
+            : null,
+          recentVisits: visitor.visits.map((visit) => ({
+            id: visit.id,
+            date: visit.visit_date,
+            hour: visit.visit_hour,
+            exitDate: visit.exit_date,
+            reason: visit.visit_reason,
+            type: visit.visit_type.name,
+            location: {
+              entity: visit.entity.name,
+              administrativeUnit: visit.administrative_unit.name,
+              direction: visit.direction?.name || null,
+              area: visit.area?.name || null,
+            },
+            vehicle: visit.vehicle
+              ? {
+                  plate: visit.vehicle.plate,
+                  model: visit.vehicle.model,
+                  brand: visit.vehicle.brand,
+                  color: visit.vehicle.color,
+                }
+              : null,
+          })),
+        },
       };
-      res.json(formattedVisitor);
+
+      res.json(serializeBigInt(formattedResponse));
     } else {
-      res.status(404).json({ message: 'Visitor not found' });
+      res.status(404).json({
+        exists: false,
+        message: 'Visitor not found',
+      });
     }
   } catch (error) {
     console.error('Error searching for visitor:', error);
-    res
-      .status(500)
-      .json({ error: 'An error occurred while searching for the visitor' });
+    res.status(500).json({
+      error: 'An error occurred while searching for the visitor',
+      details: error.message,
+    });
   }
 });
 
@@ -361,6 +421,7 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
         area_id,
         direction_id,
         visit_date,
+        visit_hour,
         exit_date,
         visit_reason,
 
@@ -446,6 +507,7 @@ router.post('/register-complete', validateRegistration, async (req, res) => {
           area_id: area_id ? BigInt(area_id) : null,
           direction_id: direction_id ? BigInt(direction_id) : null,
           visit_date: new Date(visit_date),
+          visit_hour,
           visit_reason,
           ...(vehicle?.id ? { vehicle_id: vehicle.id } : {}),
         },
@@ -505,6 +567,115 @@ router.patch('/exit/:id', async (req, res) => {
     console.error('Error updating visit exit:', error);
     res.status(500).json({
       error: 'Error updating visit exit',
+      details: error.message,
+    });
+  }
+});
+
+// Get dashboard statistics and chart data
+router.get('/dashboard-stats', async (req, res) => {
+  try {
+    const { timeRange = 'week' } = req.query;
+    const now = new Date();
+    let startDate;
+
+    // Calculate start date based on time range
+    switch (timeRange) {
+      case 'day':
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+        break;
+      case 'week':
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        break;
+      case 'month':
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+        break;
+      default:
+        startDate = new Date(0); // All time
+    }
+
+    // Get visits within the time range
+    const visits = await prisma.visit.findMany({
+      where: {
+        visit_date: {
+          gte: startDate,
+        },
+      },
+      include: {
+        visitor: {
+          include: {
+            visitor_companies: {
+              include: {
+                company: true,
+              },
+            },
+          },
+        },
+        entity: true,
+        administrative_unit: true,
+        area: true,
+        direction: true,
+      },
+      orderBy: {
+        visit_date: 'asc',
+      },
+    });
+
+    // Calculate statistics
+    const stats = {
+      totalVisits: visits.length,
+      activeVisits: visits.filter((visit) => !visit.exit_date).length,
+      uniqueVisitors: new Set(visits.map((visit) => visit.visitor_id)).size,
+    };
+
+    // Format data for charts
+    const dailyVisits = visits.reduce((acc, visit) => {
+      const date = new Date(visit.visit_date).toLocaleDateString();
+      acc[date] = (acc[date] || 0) + 1;
+      return acc;
+    }, {});
+
+    const entityDistribution = visits.reduce((acc, visit) => {
+      const entityName = visit.entity.name;
+      acc[entityName] = (acc[entityName] || 0) + 1;
+      return acc;
+    }, {});
+
+    const frequentVisitors = Object.entries(
+      visits.reduce((acc, visit) => {
+        const visitorName = `${visit.visitor.first_name} ${visit.visitor.last_name}`;
+        acc[visitorName] = (acc[visitorName] || 0) + 1;
+        return acc;
+      }, {})
+    )
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
+
+    const response = {
+      stats,
+      charts: {
+        dailyVisits: Object.entries(dailyVisits).map(([date, count]) => ({
+          date,
+          visits: count,
+        })),
+        entityDistribution: Object.entries(entityDistribution).map(
+          ([entity, count]) => ({
+            name: entity,
+            value: count,
+          })
+        ),
+        frequentVisitors: frequentVisitors.map(([name, visits]) => ({
+          name,
+          visits,
+        })),
+      },
+    };
+
+    res.json(serializeBigInt(response));
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({
+      error: 'Error fetching dashboard statistics',
       details: error.message,
     });
   }
