@@ -575,7 +575,7 @@ router.patch('/exit/:id', async (req, res) => {
 // Get dashboard statistics and chart data
 router.get('/dashboard-stats', async (req, res) => {
   try {
-    const { timeRange = 'week' } = req.query;
+    const { timeRange = 'week', metric = 'visits' } = req.query;
     const now = new Date();
     let startDate;
 
@@ -591,10 +591,10 @@ router.get('/dashboard-stats', async (req, res) => {
         startDate = new Date(now.setMonth(now.getMonth() - 1));
         break;
       default:
-        startDate = new Date(0); // All time
+        startDate = new Date(0);
     }
 
-    // Get visits within the time range
+    // Get visits within the time range with all necessary relations
     const visits = await prisma.visit.findMany({
       where: {
         visit_date: {
@@ -621,53 +621,105 @@ router.get('/dashboard-stats', async (req, res) => {
       },
     });
 
-    // Calculate statistics
+    // Base statistics
     const stats = {
       totalVisits: visits.length,
       activeVisits: visits.filter((visit) => !visit.exit_date).length,
       uniqueVisitors: new Set(visits.map((visit) => visit.visitor_id)).size,
     };
 
-    // Format data for charts
-    const dailyVisits = visits.reduce((acc, visit) => {
-      const date = new Date(visit.visit_date).toLocaleDateString();
-      acc[date] = (acc[date] || 0) + 1;
-      return acc;
-    }, {});
+    // Function to get distribution data based on metric
+    const getDistributionData = (visits, metric) => {
+      switch (metric) {
+        case 'visits':
+          return visits.reduce((acc, visit) => {
+            const date = new Date(visit.visit_date).toLocaleDateString();
+            acc[date] = (acc[date] || 0) + 1;
+            return acc;
+          }, {});
 
-    const entityDistribution = visits.reduce((acc, visit) => {
-      const entityName = visit.entity.name;
-      acc[entityName] = (acc[entityName] || 0) + 1;
-      return acc;
-    }, {});
+        case 'entities':
+          return visits.reduce((acc, visit) => {
+            const name = visit.entity.name;
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+          }, {});
 
-    const frequentVisitors = Object.entries(
-      visits.reduce((acc, visit) => {
-        const visitorName = `${visit.visitor.first_name} ${visit.visitor.last_name}`;
-        acc[visitorName] = (acc[visitorName] || 0) + 1;
-        return acc;
-      }, {})
-    )
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5);
+        case 'directions':
+          return visits.reduce((acc, visit) => {
+            const name = visit.direction?.name || 'Sin dirección';
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+          }, {});
 
+        case 'departments':
+          return visits.reduce((acc, visit) => {
+            const name = visit.administrative_unit.name;
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+          }, {});
+
+        case 'areas':
+          return visits.reduce((acc, visit) => {
+            const name = visit.area?.name || 'Sin área';
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+          }, {});
+
+        default:
+          return {};
+      }
+    };
+
+    // Get distribution data based on selected metric
+    const distributionData = getDistributionData(visits, metric);
+
+    // Format the response
     const response = {
       stats,
       charts: {
-        dailyVisits: Object.entries(dailyVisits).map(([date, count]) => ({
-          date,
-          visits: count,
-        })),
-        entityDistribution: Object.entries(entityDistribution).map(
-          ([entity, count]) => ({
+        // Main chart data based on selected metric
+        mainChart: Object.entries(distributionData)
+          .map(([key, value]) => ({
+            name: key,
+            value: value,
+          }))
+          .sort((a, b) => b.value - a.value),
+
+        // Entity distribution for pie chart
+        entityDistribution: Object.entries(
+          getDistributionData(visits, 'entities')
+        )
+          .map(([entity, count]) => ({
             name: entity,
             value: count,
-          })
-        ),
-        frequentVisitors: frequentVisitors.map(([name, visits]) => ({
-          name,
-          visits,
-        })),
+          }))
+          .sort((a, b) => b.value - a.value),
+
+        // Department distribution for areas view
+        departmentDistribution: Object.entries(
+          getDistributionData(visits, 'departments')
+        )
+          .map(([dept, count]) => ({
+            name: dept,
+            value: count,
+          }))
+          .sort((a, b) => b.value - a.value),
+
+        // Frequent visitors
+        frequentVisitors: Object.entries(
+          visits.reduce((acc, visit) => {
+            const visitorName = `${visit.visitor.first_name} ${visit.visitor.last_name}`;
+            acc[visitorName] = (acc[visitorName] || 0) + 1;
+            return acc;
+          }, {})
+        )
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 5)
+          .map(([name, visits]) => ({
+            name,
+            visits,
+          })),
       },
     };
 
