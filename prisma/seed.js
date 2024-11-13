@@ -783,7 +783,7 @@ async function main() {
         },
         {
           id: 103n,
-          name: 'Oficina de Tecnología de Consultoría Jurídica',
+          name: 'Oficina de Consultoría Jurídica',
           entity_id: cvm.id,
         },
         {

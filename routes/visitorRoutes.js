@@ -21,7 +21,6 @@ const validateRegistration = (req, res, next) => {
     'contact_number_prefix_id',
     'contact_number',
     'enterpriseName',
-    'enterpriseRif',
     'visit_type_id',
     'entity_id',
     'administrative_unit_id',
@@ -181,7 +180,15 @@ router.get('/search-visitor', async (req, res) => {
             administrative_unit: true,
             area: true,
             direction: true,
-            vehicle: true,
+            vehicle: {
+              select: {
+                id: true,
+                brand: true,
+                model: true,
+                color: true,
+                plate: true,
+              },
+            },
           },
         },
       },
@@ -211,7 +218,6 @@ router.get('/search-visitor', async (req, res) => {
             ? {
                 id: visitor.visitor_companies[0].company.id,
                 name: visitor.visitor_companies[0].company.name,
-                rif: visitor.visitor_companies[0].company.rif,
               }
             : null,
           recentVisits: visitor.visits.map((visit) => ({
@@ -229,6 +235,7 @@ router.get('/search-visitor', async (req, res) => {
             },
             vehicle: visit.vehicle
               ? {
+                  id: visit.vehicle.id,
                   plate: visit.vehicle.plate,
                   model: visit.vehicle.model,
                   brand: visit.vehicle.brand,
@@ -400,128 +407,148 @@ router.delete('/', verifyToken, async (req, res) => {
 // Register complete visitor data
 router.post('/register-complete', validateRegistration, async (req, res) => {
   try {
-    const transaction = await prisma.$transaction(async (prisma) => {
-      const {
-        // Visitor data
-        dni_type_id,
-        dni_number,
-        firstName,
-        lastName,
-        contact_number_prefix_id,
-        contact_number,
+    const {
+      // Visitor data
+      dni_type_id,
+      dni_number,
+      firstName,
+      lastName,
+      contact_number_prefix_id,
+      contact_number,
 
-        // Enterprise data
-        enterpriseName,
-        enterpriseRif,
+      // Enterprise data
+      enterpriseName,
 
-        // Visit data
-        visit_type_id,
-        entity_id,
-        administrative_unit_id,
-        area_id,
-        direction_id,
-        visit_date,
-        visit_hour,
-        exit_date,
-        visit_reason,
+      // Visit data
+      visit_type_id,
+      entity_id,
+      administrative_unit_id,
+      area_id,
+      direction_id,
+      visit_date,
+      visit_hour,
+      exit_date,
+      visit_reason,
+      visit_contact,
 
-        // Vehicle data (optional)
-        vehicle_plate,
-        vehicle_model,
-        vehicle_brand,
-        vehicle_color,
-      } = req.body;
+      // Vehicle data (optional)
+      vehicle_plate,
+      vehicle_model,
+      vehicle_brand,
+      vehicle_color,
+      contact,
+    } = req.body;
 
-      // 1. Check if visitor already exists
-      const existingVisitor = await prisma.visitor.findFirst({
-        where: {
-          AND: [{ dni_type_id }, { dni_number }],
+    // 1. Check if visitor already exists
+    const existingVisitor = await prisma.visitor.findFirst({
+      where: {
+        AND: [{ dni_type_id }, { dni_number }],
+      },
+    });
+
+    // 2. Create or use existing visitor
+    const visitor =
+      existingVisitor ||
+      (await prisma.visitor.create({
+        data: {
+          dni_type_id,
+          dni_number,
+          first_name: firstName,
+          last_name: lastName,
+          contact_number_prefix_id,
+          contact_number,
+        },
+      }));
+
+    // 3. Create or find enterprise by name
+    let company = await prisma.company.findUnique({
+      where: { name: enterpriseName },
+    });
+
+    if (!company) {
+      company = await prisma.company.create({
+        data: {
+          name: enterpriseName,
         },
       });
+    }
 
-      // 2. Create or use existing visitor
-      const visitor =
-        existingVisitor ||
-        (await prisma.visitor.create({
-          data: {
-            dni_type_id,
-            dni_number,
-            first_name: firstName,
-            last_name: lastName,
-            contact_number_prefix_id,
-            contact_number,
-          },
-        }));
+    // 4. Create visitor-company relationship if it doesn't exist
+    const existingRelation = await prisma.visitorCompany.findFirst({
+      where: {
+        visitor_id: visitor.id,
+        company_id: company.id,
+      },
+    });
 
-      // 3. Create or find enterprise by RIF (more reliable than name)
-      let company = await prisma.company.findUnique({
-        where: { rif: enterpriseRif },
-      });
-
-      if (!company) {
-        company = await prisma.company.create({
-          data: {
-            name: enterpriseName,
-            rif: enterpriseRif,
-          },
-        });
-      }
-
-      // 4. Create visitor-company relationship if it doesn't exist
-      const existingRelation = await prisma.visitorCompany.findFirst({
-        where: {
+    if (!existingRelation) {
+      await prisma.visitorCompany.create({
+        data: {
           visitor_id: visitor.id,
           company_id: company.id,
         },
       });
+    }
 
-      if (!existingRelation) {
-        await prisma.visitorCompany.create({
-          data: {
-            visitor_id: visitor.id,
-            company_id: company.id,
-          },
-        });
-      }
-
-      // 5. Create vehicle only if it's a vehicular visit
-      let vehicle = null;
-      if (visit_type_id === 2 && vehicle_plate && vehicle_model) {
-        vehicle = await prisma.vehicle.create({
-          data: {
-            plate: vehicle_plate,
-            model: vehicle_model,
-            brand: vehicle_brand || '',
-            color: vehicle_color || '',
-          },
-        });
-      }
-
-      // 6. Create visit
-      const visit = await prisma.visit.create({
-        data: {
-          visitor_id: visitor.id,
-          visit_type_id,
-          entity_id,
-          administrative_unit_id: BigInt(administrative_unit_id),
-          area_id: area_id ? BigInt(area_id) : null,
-          direction_id: direction_id ? BigInt(direction_id) : null,
-          visit_date: new Date(visit_date),
-          visit_hour,
-          visit_reason,
-          ...(vehicle?.id ? { vehicle_id: vehicle.id } : {}),
+    // 5. Create vehicle and visitor-vehicle relationship if it's a vehicular visit
+    let vehicle = null;
+    let visitorVehicle = null;
+    if (visit_type_id === 2 && vehicle_plate && vehicle_model) {
+      // Create or find existing vehicle
+      vehicle = await prisma.vehicle.upsert({
+        where: { plate: vehicle_plate },
+        update: {
+          model: vehicle_model,
+          brand: vehicle_brand || '',
+          color: vehicle_color || '',
+        },
+        create: {
+          plate: vehicle_plate,
+          model: vehicle_model,
+          brand: vehicle_brand || '',
+          color: vehicle_color || '',
         },
       });
 
-      return {
-        visitor,
-        company,
-        vehicle,
-        visit,
-      };
+      // Create visitor-vehicle relationship
+      visitorVehicle = await prisma.visitorVehicle.create({
+        data: {
+          visitor_id: visitor.id,
+          vehicle_id: vehicle.id,
+        },
+      });
+    }
+
+    // 6. Create visit
+    const visit = await prisma.visit.create({
+      data: {
+        visitor_id: visitor.id,
+        visit_type_id,
+        entity_id,
+        administrative_unit_id: BigInt(administrative_unit_id),
+        area_id: area_id ? BigInt(area_id) : null,
+        direction_id: direction_id ? BigInt(direction_id) : null,
+        visit_date: new Date(visit_date),
+        visit_hour,
+        visit_reason,
+        visit_contact: contact || '',
+        ...(vehicle?.id ? { vehicle_id: vehicle.id } : {}),
+      },
     });
 
-    res.status(201).json(serializeBigInt(transaction));
+    // Send the response using the serializer
+    res.status(201).json(
+      serializeBigInt({
+        success: true,
+        data: {
+          visitor,
+          company,
+          vehicle,
+          visitorVehicle,
+          visit,
+        },
+      })
+    );
   } catch (error) {
     console.error('Registration error:', error);
     res.status(400).json({
@@ -728,6 +755,77 @@ router.get('/dashboard-stats', async (req, res) => {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({
       error: 'Error fetching dashboard statistics',
+      details: error.message,
+    });
+  }
+});
+
+// Add a new endpoint to get visitor's vehicles
+router.get('/visitor-vehicles/:visitorId', async (req, res) => {
+  try {
+    const { visitorId } = req.params;
+
+    const visitorVehicles = await prisma.visitorVehicle.findMany({
+      where: {
+        visitor_id: parseInt(visitorId),
+      },
+      include: {
+        vehicle: true,
+      },
+    });
+
+    res.json(serializeBigInt(visitorVehicles));
+  } catch (error) {
+    console.error('Error fetching visitor vehicles:', error);
+    res.status(500).json({
+      error: 'Error fetching visitor vehicles',
+      details: error.message,
+    });
+  }
+});
+
+// Add endpoint to associate existing vehicle with visitor
+router.post('/visitor-vehicles', async (req, res) => {
+  try {
+    const { visitor_id, vehicle_id } = req.body;
+
+    const visitorVehicle = await prisma.visitorVehicle.create({
+      data: {
+        visitor_id: parseInt(visitor_id),
+        vehicle_id: parseInt(vehicle_id),
+      },
+      include: {
+        vehicle: true,
+        visitor: true,
+      },
+    });
+
+    res.status(201).json(serializeBigInt(visitorVehicle));
+  } catch (error) {
+    console.error('Error associating vehicle with visitor:', error);
+    res.status(400).json({
+      error: 'Error associating vehicle with visitor',
+      details: error.message,
+    });
+  }
+});
+
+// Add endpoint to remove vehicle association
+router.delete('/visitor-vehicles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.visitorVehicle.delete({
+      where: {
+        id: parseInt(id),
+      },
+    });
+
+    res.json({ message: 'Vehicle association removed successfully' });
+  } catch (error) {
+    console.error('Error removing vehicle association:', error);
+    res.status(500).json({
+      error: 'Error removing vehicle association',
       details: error.message,
     });
   }

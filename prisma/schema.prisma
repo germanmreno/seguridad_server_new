@@ -48,6 +48,7 @@ model Visit {
   visit_hour             String    // New field for storing the hour
   exit_date              DateTime?
   visit_reason           String
+  visit_contact          String
   vehicle_id             Int?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
@@ -88,9 +89,8 @@ model Alert {
 }
 
 model Company {
-  id                Int              @id @default(autoincrement())
-  name              String
-  rif               String          @unique  // Adding RIF field with unique constraint
+  id               Int              @id @default(autoincrement())
+  name             String           @unique
   visitor_companies VisitorCompany[]
 }
 

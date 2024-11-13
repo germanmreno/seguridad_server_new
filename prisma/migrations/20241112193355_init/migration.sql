@@ -39,6 +39,7 @@ CREATE TABLE `Visit` (
     `visit_hour` VARCHAR(191) NOT NULL,
     `exit_date` DATETIME(3) NULL,
     `visit_reason` VARCHAR(191) NOT NULL,
+    `visit_contact` VARCHAR(191) NOT NULL,
     `vehicle_id` INTEGER NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
@@ -76,9 +77,7 @@ CREATE TABLE `Alert` (
 CREATE TABLE `Company` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(191) NOT NULL,
-    `rif` VARCHAR(191) NOT NULL,
 
-    UNIQUE INDEX `Company_rif_key`(`rif`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
