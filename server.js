@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import visitorRoutes from './routes/visitorRoutes.js';
+import selectsRoutes from './routes/selectsRoutes.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -23,6 +24,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/visitors', visitorRoutes);
+app.use('/api/selects', selectsRoutes);
 
 // The "catchall" handler: for any request that doesn't
 // match one above, send back the index.html file.

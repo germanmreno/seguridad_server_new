@@ -8,27 +8,180 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  firstName String
-  lastName  String
-  role      String
+  id        Int    @id @default(autoincrement())
+  username  String @unique @db.VarChar(191)
+  password  String @db.VarChar(191)
+  firstName String @db.VarChar(191)
+  lastName  String @db.VarChar(191)
+  role      String @db.VarChar(191)
 }
 
 model Visitor {
-  id            Int      @id @default(autoincrement())
-  firstName     String
-  lastName      String
-  dni           String   
-  business      String
-  phone         String
-  gerency       String
-  contact       String
-  observation   String
-  date          DateTime
-  hour          String   // New field
-  registered_by String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                       Int      @id @default(autoincrement())
+  dni_type_id              Int
+  dni_number               Int
+  first_name               String
+  last_name                String
+  contact_number_prefix_id Int
+  contact_number           String
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  // Relations
+  dnis_type         DnisType         @relation(fields: [dni_type_id], references: [id])
+  numbers_prefix    NumbersPrefix    @relation(fields: [contact_number_prefix_id], references: [id])
+  visits            Visit[]
+  visitor_companies VisitorCompany[]
+  alerts            Alert[]
+  visitor_vehicles  VisitorVehicle[]
+}
+
+model Visit {
+  id                     Int       @id @default(autoincrement())
+  visitor_id             Int
+  visit_type_id          Int
+  entity_id              Int
+  administrative_unit_id BigInt
+  area_id                BigInt?
+  direction_id           BigInt?
+  visit_date             DateTime
+  visit_hour             String    // New field for storing the hour
+  exit_date              DateTime?
+  visit_reason           String
+  visit_contact          String
+  vehicle_id             Int?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Relations
+  visitor             Visitor            @relation(fields: [visitor_id], references: [id])
+  visit_type          VisitType          @relation(fields: [visit_type_id], references: [id])
+  entity              Entity             @relation(fields: [entity_id], references: [id])
+  administrative_unit AdministrativeUnit @relation(fields: [administrative_unit_id], references: [id])
+  area                Area?              @relation(fields: [area_id], references: [id])
+  direction           Direction?         @relation(fields: [direction_id], references: [id])
+  vehicle             Vehicle?           @relation(fields: [vehicle_id], references: [id])
+}
+
+model VisitType {
+  id     Int     @id @default(autoincrement())
+  name   String  // Will contain either "Pedestrian" or "Vehicular"
+  visits Visit[]
+}
+
+model VisitorCompany {
+  id         Int @id @default(autoincrement())
+  visitor_id Int
+  company_id Int
+
+  // Relations
+  visitor Visitor @relation(fields: [visitor_id], references: [id])
+  company Company @relation(fields: [company_id], references: [id])
+}
+
+model Alert {
+  id           Int    @id @default(autoincrement())
+  reason_alert String
+  visitor_id   Int
+
+  // Relations
+  visitor Visitor @relation(fields: [visitor_id], references: [id])
+}
+
+model Company {
+  id               Int              @id @default(autoincrement())
+  name             String           @unique
+  visitor_companies VisitorCompany[]
+}
+
+model NumbersPrefix {
+  id       Int       @id @default(autoincrement())
+  code     String
+  visitors Visitor[]
+}
+
+model DnisType {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(15)
+  abbreviation String    @db.VarChar(5)
+  visitors     Visitor[]
+}
+
+model Entity {
+  id                   Int                  @id @default(autoincrement())
+  name                 String
+  administrative_units AdministrativeUnit[]
+  visits               Visit[]
+}
+
+model AdministrativeUnit {
+  id         BigInt      @id
+  name       String
+  entity_id  Int
+  entity     Entity      @relation(fields: [entity_id], references: [id])
+  directions Direction[]
+  areas      Area[]
+  visits     Visit[]
+}
+
+model Direction {
+  id                     BigInt             @id
+  name                   String
+  administrative_unit_id BigInt
+  administrative_unit    AdministrativeUnit @relation(fields: [administrative_unit_id], references: [id])
+  areas                  Area[]
+  Visit                  Visit[]
+}
+
+model Area {
+  id                     BigInt              @id
+  name                   String
+  direction_id           BigInt? // Ensure the optional field is correctly formatted
+  administrative_unit_id BigInt? // Ensure the optional field is correctly formatted
+  direction              Direction?          @relation(fields: [direction_id], references: [id])
+  administrative_unit    AdministrativeUnit? @relation(fields: [administrative_unit_id], references: [id])
+  visits                 Visit[]
+}
+
+model Vehicle {
+  id            Int              @id @default(autoincrement())
+  brand         String
+  model         String
+  color         String
+  plate String
+  parking_records ParkingRecord[]
+  visitor_vehicles VisitorVehicle[]
+  visits          Visit[]
+}
+
+model GarageSpace {
+  id               Int             @id @default(autoincrement())
+  space_identifier String          @unique
+  is_occupied      Boolean         @default(false)
+  parking_records  ParkingRecord[]
+}
+
+model ParkingRecord {
+  id              Int         @id @default(autoincrement())
+  vehicle_id      Int
+  garage_space_id Int        // Make sure this matches exactly
+  entry_time      DateTime
+  exit_time       DateTime?
+  
+  // Relations
+  vehicle      Vehicle     @relation(fields: [vehicle_id], references: [id])
+  garage_space GarageSpace @relation(fields: [garage_space_id], references: [id])
+
+  @@index([garage_space_id])
+  @@index([vehicle_id])
+}
+
+model VisitorVehicle {
+  id         Int     @id @default(autoincrement())
+  visitor_id Int
+  vehicle_id Int
+  
+  // Relations
+  visitor Visitor @relation(fields: [visitor_id], references: [id])
+  vehicle Vehicle @relation(fields: [vehicle_id], references: [id])
 }
